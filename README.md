@@ -27,7 +27,11 @@ npm run build
 
 ## Status
 
-Phase 2 (`economic-core`'s `EconomicAction` state machine) is in progress.
-`policy-engine` and `provider-adapters` are scaffolded later, at Phase 4
-and Phase 5 respectively — see the roadmap in the `alma` workspace's
-planning docs.
+Phase 2 (`economic-core`'s `EconomicAction` state machine) is done:
+`createEconomicAction`/`transition`, the full 9-transition state machine
+from `docs/10-economic-action-lifecycle.md`, and audit record emission —
+in-memory only, no real provider yet, no dependency on policy-engine or
+provider-adapters (those stay shape-only stubs on `EconomicAction` until
+Phase 4/5). `policy-engine` and `provider-adapters` are scaffolded later,
+at Phase 4 and Phase 5 respectively — see the roadmap in the `alma`
+workspace's planning docs.
