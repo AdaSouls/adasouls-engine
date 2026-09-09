@@ -12,6 +12,15 @@
     }
   },
   "files": ["dist"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AdaSouls/adasouls-engine.git",
+    "directory": "packages/economic-core"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
