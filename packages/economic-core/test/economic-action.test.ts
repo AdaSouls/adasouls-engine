@@ -128,6 +128,25 @@ describe("legal transitions — every one of the nine from the state diagram", (
     });
     expect(executing.execution).toEqual({ providerId: "crossmint", providerRef: "tx_1" });
   });
+
+  it("needsReconciliation can be set via patch on an ambiguous provider outcome, and cleared later without a status change", () => {
+    const authorized = transition(freshAction(), "authorized", { actor: ACTOR }).action;
+    const { action: executing } = transition(authorized, "executing", {
+      actor: { type: "system", id: "adasouls-worker" },
+      patch: { execution: { providerId: "safe", providerRef: "0xabc" }, needsReconciliation: true },
+    });
+    expect(executing.status).toBe("executing");
+    expect(executing.needsReconciliation).toBe(true);
+
+    // Reconciliation resolves the ambiguity without itself being a
+    // status transition -- economic-core has no reconciling->executing
+    // edge because it's not a separate status; clearing the flag is just
+    // a patch. The worker decides the REAL next status (confirmed/
+    // failed) once it has ground truth, via a normal transition().
+    const cleared: typeof executing = { ...executing, needsReconciliation: false };
+    expect(cleared.needsReconciliation).toBe(false);
+    expect(cleared.status).toBe("executing");
+  });
 });
 
 describe("illegal transitions — exhaustive sweep over every (from, to) pair not on the diagram", () => {

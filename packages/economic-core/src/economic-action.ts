@@ -130,6 +130,17 @@ export interface EconomicAction {
   execution?: ExecutionRef;
   status: EconomicActionStatus;
   result?: Record<string, unknown>;
+  /**
+   * Set when a provider call returns an ambiguous outcome (submitted but
+   * not yet confirmed, or the provider couldn't say definitively) --
+   * per docs/10-economic-action-lifecycle.md: "modeled as `executing`
+   * with a `needsReconciliation` flag" rather than a separate status, so
+   * it doesn't need its own transitions in the table above. The caller
+   * (adasouls-worker, Phase 6) polls the provider for ground truth and
+   * clears this via a patch once resolved, rather than blindly retrying
+   * a possibly-already-submitted transaction.
+   */
+  needsReconciliation?: boolean;
   audit: { createdAt: string; events: string[] };
 }
 
@@ -215,7 +226,9 @@ export interface TransitionOptions {
   actor: AuditActor;
   detail?: Record<string, unknown>;
   /** Merged into the returned action alongside the status change (e.g. execution, result). */
-  patch?: Partial<Pick<EconomicAction, "policyEvaluation" | "executionPlan" | "approval" | "execution" | "result">>;
+  patch?: Partial<
+    Pick<EconomicAction, "policyEvaluation" | "executionPlan" | "approval" | "execution" | "result" | "needsReconciliation">
+  >;
 }
 
 export interface TransitionResult {
