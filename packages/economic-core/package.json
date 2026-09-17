@@ -1,6 +1,6 @@
 {
   "name": "@adasouls/economic-core",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "EconomicAction/EconomicIntent model, state machine, and execution planning.",
   "type": "module",
   "main": "./dist/index.js",
