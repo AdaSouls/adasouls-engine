@@ -112,6 +112,16 @@ export interface MatchedPolicy {
 }
 
 export interface PolicyEvaluation {
+  /**
+   * true only when the action is authorized outright -- nothing denied
+   * it AND no approval is needed. false covers both a hard deny and a
+   * needs-approval outcome; the caller distinguishes those by checking
+   * approvalsRequired.length (per docs/06-api-contracts.md's dry-run
+   * example and docs/10-economic-action-lifecycle.md's three-way
+   * created -> rejected | pending_approval | authorized state machine).
+   * Do NOT treat `allowed` alone as "go ahead" -- a caller that does
+   * skips the approval gate entirely.
+   */
   allowed: boolean;
   reasons: string[];
   approvalsRequired: string[];

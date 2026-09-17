@@ -107,6 +107,7 @@ export function evaluatePolicy(policies: Policy[], context: EvaluationContext): 
       break; // short-circuit: no reason to evaluate later kinds
     }
     if (result.outcome === "requires_approval") {
+      allowed = false;
       approvalsRequired.push(...result.approvalsRequired);
     }
   }

@@ -64,10 +64,11 @@ describe("self policy", () => {
     expect(result.reasons[0]).toContain("projected daily spend 110");
   });
 
-  it("humanApprovalThreshold requires approval without denying outright", () => {
+  it("humanApprovalThreshold requires approval, not an outright deny -- allowed is still false (needs a human), reasons stays empty (it's not a hard block)", () => {
     const policies = [selfPolicy({ maxTransaction: { USDC: "1000" }, humanApprovalThreshold: { USDC: "100" } })];
     const result = evaluatePolicy(policies, ctx({ intent: { capability: "pay", asset: "USDC", amount: "500" } }));
-    expect(result.allowed).toBe(true);
+    expect(result.allowed).toBe(false);
+    expect(result.reasons).toEqual([]);
     expect(result.approvalsRequired).toEqual(["human_approval"]);
   });
 });
