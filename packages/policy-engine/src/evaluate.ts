@@ -76,7 +76,8 @@ function resolveEffectiveRules<K extends PolicyKind>(
  * the first hard "fail" (remaining kinds aren't evaluated -- there's no
  * reason to, the action is already denied), but a "requires_approval"
  * outcome does NOT short-circuit -- evaluation continues so the caller
- * sees every approval needed, not just the first one.
+ * sees every approval needed, not just the first one. A later "fail"
+ * discards those approvals: a denied action is never approvable.
  */
 export function evaluatePolicy(policies: Policy[], context: EvaluationContext): PolicyEvaluation {
   const reasons: string[] = [];
@@ -104,6 +105,10 @@ export function evaluatePolicy(policies: Policy[], context: EvaluationContext): 
     if (result.outcome === "fail") {
       allowed = false;
       reasons.push(...result.reasons);
+      // A hard deny wins over any approval an earlier kind asked for:
+      // callers route "approvalsRequired non-empty" to pending_approval,
+      // so leaving them here would let a human approve a denied action.
+      approvalsRequired.length = 0;
       break; // short-circuit: no reason to evaluate later kinds
     }
     if (result.outcome === "requires_approval") {

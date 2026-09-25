@@ -233,9 +233,37 @@ describe("evaluation order and short-circuit", () => {
       [selfApproval, executionDeny],
       ctx({ intent: { capability: "pay", asset: "USDC", amount: "500", chain: "ethereum" } })
     );
-    expect(result.approvalsRequired).toEqual(["human_approval"]);
     // execution was still reached and denied, proving self's requires_approval didn't stop evaluation
     expect(result.allowed).toBe(false);
     expect(result.reasons[0]).toContain('chain "ethereum"');
+    // ...and the deny discards the approval: callers map a non-empty approvalsRequired to
+    // pending_approval, which would let a human approve an action a policy denied.
+    expect(result.approvalsRequired).toEqual([]);
+  });
+
+  it("a hard deny is never approvable: self needs approval, counterparty denies -> no approvals left", () => {
+    const selfApproval = selfPolicy({ humanApprovalThreshold: { USDC: "50" } }, {}, "pol_self");
+    const counterpartyDeny: Policy = {
+      id: "pol_cp",
+      kind: "counterparty",
+      version: 1,
+      scope: {},
+      rules: { minCompletedTransactions: 2 },
+    };
+    const result = evaluatePolicy(
+      [selfApproval, counterpartyDeny],
+      ctx({ intent: { capability: "pay", asset: "USDC", amount: "750" }, counterparty: { id: "agent_456", completedTransactions: 0 } })
+    );
+    expect(result.allowed).toBe(false);
+    expect(result.approvalsRequired).toEqual([]);
+    expect(result.reasons.join(" ")).toMatch(/completed transactions/);
+  });
+
+  it("approval alone (nothing denied) still asks for approval", () => {
+    const result = evaluatePolicy(
+      [selfPolicy({ humanApprovalThreshold: { USDC: "50" } }, {}, "pol_self")],
+      ctx({ intent: { capability: "pay", asset: "USDC", amount: "750" } })
+    );
+    expect(result).toMatchObject({ allowed: false, approvalsRequired: ["human_approval"], reasons: [] });
   });
 });
