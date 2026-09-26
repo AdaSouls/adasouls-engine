@@ -1,5 +1,11 @@
 # @adasouls/policy-engine
 
+## 0.1.3
+
+### Patch Changes
+
+- [#4](https://github.com/AdaSouls/adasouls-engine/pull/4) [`2a22baf`](https://github.com/AdaSouls/adasouls-engine/commit/2a22baf025fa4bfa229c89ee340f890bab9fe20e) Thanks [@MatiFalcone](https://github.com/MatiFalcone)! - Security fix: a hard policy deny now discards approvals requested by earlier policy kinds. Previously, when a self policy required human approval and a later kind (e.g. counterparty) denied, `approvalsRequired` stayed non-empty, so callers routed the denied action to `pending_approval` and a human could approve it.
+
 ## 0.1.2
 
 ### Patch Changes
