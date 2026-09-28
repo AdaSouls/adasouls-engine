@@ -1,5 +1,11 @@
 # @adasouls/provider-adapters
 
+## 0.1.2
+
+### Patch Changes
+
+- [#7](https://github.com/AdaSouls/adasouls-engine/pull/7) [`2086795`](https://github.com/AdaSouls/adasouls-engine/commit/2086795bcb94a2d1ec591efc1465065d324541b0) Thanks [@MatiFalcone](https://github.com/MatiFalcone)! - Open source under MIT and publish to the public npm registry instead of GitHub Packages.
+
 ## 0.1.1
 
 ### Patch Changes
