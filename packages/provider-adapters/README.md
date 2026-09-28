@@ -2,8 +2,8 @@
 
 `WalletProvider`/`AccountProvider`/`ChainAdapter`/... interfaces per
 ADR-006, plus a mock (fully self-contained) and a real Safe-on-Base-Sepolia
-implementation. See `docs/09-custody-and-key-management.md` for the
-provider category table and onboarding requirements.
+implementation. Providers are the custody boundary: AdaSouls never holds keys; each
+organization brings its own provider connection.
 
 ## What's implemented (Phase 5)
 
@@ -22,10 +22,9 @@ including CI.
 ## Verifying against a real testnet Safe
 
 This needs a throwaway testnet wallet you control — **not** an AdaSouls
-credential, and not real money at any point. Per the multi-tenant model
-(every organization brings its own provider connection — see
-`05-data-ownership.md`'s `ProviderConnection`), this is just proving the
-adapter's plumbing actually works against a real chain.
+credential, and not real money at any point. Every organization brings its
+own provider connection; this only proves the adapter's plumbing works
+against a real chain.
 
 1. Generate a throwaway private key (anything works, e.g.
    `npx viem generatePrivateKey` or any wallet tool) — **never reuse a
@@ -37,9 +36,10 @@ adapter's plumbing actually works against a real chain.
    ```bash
    TESTNET_SIGNER_PRIVATE_KEY=0x... npm run deploy:testnet-safe
    ```
-   This script is **unverified by me** — I have no funded testnet key to
-   run it end to end myself. If it errors, paste me the exact error and
-   we'll fix it together, same as the Terraform/RDS debugging earlier.
+   Not yet verified end to end against a live network. If it fails
+   because the installed Safe SDK doesn't expose a direct send for its own
+   deployment transaction, send `deploymentTransaction` (`to`, `value`,
+   `data`) with any wallet client signing as the owner.
 4. Fund the resulting Safe address with a little testnet USDC (Circle's
    Base Sepolia faucet, or bridge/swap a small amount).
 5. Run the real test:

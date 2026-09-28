@@ -1,37 +1,74 @@
 # adasouls-engine
 
-The economic orchestration engine behind AdaSouls: turns an agent's intent
-into a policy-checked, provider-routed `EconomicAction`.
+The economic orchestration engine behind [AdaSouls](https://github.com/AdaSouls):
+it turns an AI agent's intent into a policy-checked, provider-routed,
+auditable `EconomicAction`. Built on the [ALMA](https://github.com/AdaSouls/alma)
+identity and trust protocol.
 
-```text
-packages/
-  economic-core       EconomicAction model, state machine, execution planning
-  policy-engine       self / counterparty / market / execution policy evaluation (Phase 4)
-  provider-adapters   WalletProvider, ChainAdapter, PaymentProvider, ... interfaces + adapters (Phase 5)
+MIT licensed. Published to the public npm registry under `@adasouls`.
+
+| Package | What it is |
+|---|---|
+| [`@adasouls/economic-core`](packages/economic-core) | The `EconomicAction` model: its state machine, legal transitions and audit records. |
+| [`@adasouls/policy-engine`](packages/policy-engine) | Evaluates self / counterparty / market / execution policies against an intent: authorize, deny, or require approval. |
+| [`@adasouls/provider-adapters`](packages/provider-adapters) | Provider-agnostic `AccountProvider` / `ChainAdapter` interfaces, a mock, and a Safe-on-Base-Sepolia implementation. |
+
+```bash
+npm install @adasouls/economic-core @adasouls/policy-engine @adasouls/provider-adapters
 ```
 
 ## Not a service
 
-This is a library, imported by `adasouls-api` (for authorization:
-identity → authority → policy → plan) and `adasouls-worker` (for
-execution: provider call → confirmation). It has no network endpoint, no
-database, and no auth of its own.
+These are libraries. They have no network endpoint, no database and no
+auth of their own. In AdaSouls they are used by the API (authorization:
+identity → authority → policy → plan) and by the worker (execution:
+provider call → confirmation → reconciliation).
+
+## How an action flows
+
+```text
+created ──► rejected                     (a policy denied it)
+   │
+   ├──► pending_approval ──► authorized  (a human approved)
+   │            └──────────► rejected
+   │
+   └──► authorized ──► executing ──► confirmed ──► reversed
+                            └──────► failed
+```
+
+1. `economic-core` creates the action (`createEconomicAction`) and every
+   status change goes through `transition`, which enforces the table above
+   and emits an audit record.
+2. `policy-engine` decides `created → authorized | pending_approval |
+   rejected`. A hard deny always wins over a requested approval: a denied
+   action is never approvable.
+3. `provider-adapters` executes an authorized action and reports
+   `confirmed`, `failed`, or an ambiguous outcome to reconcile later.
 
 ## Development
 
 ```bash
 npm install
-npm test    # unit tests, no external services required
+npm run lint
 npm run build
+npm test      # unit tests; no external services or credentials needed
 ```
 
-## Status
+Releases use [changesets](https://github.com/changesets/changesets): add a
+changeset with your change (`npx changeset`); merging to `main` opens a
+"Version Packages" PR, and merging that publishes to npm with provenance.
 
-Phase 2 (`economic-core`'s `EconomicAction` state machine) is done:
-`createEconomicAction`/`transition`, the full 9-transition state machine
-from `docs/10-economic-action-lifecycle.md`, and audit record emission —
-in-memory only, no real provider yet, no dependency on policy-engine or
-provider-adapters (those stay shape-only stubs on `EconomicAction` until
-Phase 4/5). `policy-engine` and `provider-adapters` are scaffolded later,
-at Phase 4 and Phase 5 respectively — see the roadmap in the `alma`
-workspace's planning docs.
+## Design references
+
+Code comments cite AdaSouls design documents (`docs/NN-*.md`, `ADR-NNN`)
+that are not published yet. The behavior they describe is summarized in
+this README and in each package's README; the tests are the precise
+specification.
+
+## Security
+
+Please report vulnerabilities privately — see [SECURITY.md](SECURITY.md).
+
+## License
+
+[MIT](LICENSE)
