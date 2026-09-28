@@ -37,13 +37,11 @@ const predictedAddress = await protocolKit.getAddress();
 console.log(`Predicted Safe address: ${predictedAddress}`);
 
 const deploymentTransaction = await protocolKit.createSafeDeploymentTransaction();
-// NOTE: unverified against a real network by me -- I have no funded
-// testnet key to actually run this end to end. If protocolKit here
-// doesn't expose a direct send/execute for its own deployment
-// transaction in the installed SDK version, the fallback is sending
-// `deploymentTransaction` (it has `.to`, `.value`, `.data`) with any
-// viem/ethers wallet client signing as `owner`. Tell me the exact error
-// if this doesn't work as written and we'll fix it together.
+// NOTE: not yet verified end to end against a live network. If
+// protocolKit doesn't expose a direct send/execute for its own deployment
+// transaction in the installed SDK version, send `deploymentTransaction`
+// (it has `.to`, `.value`, `.data`) with any viem/ethers wallet client
+// signing as `owner`.
 const externalSigner = await protocolKit.getSafeProvider().getExternalSigner();
 if (!externalSigner) {
   throw new Error("No external signer available from protocolKit.getSafeProvider() -- see the NOTE above.");
