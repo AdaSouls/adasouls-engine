@@ -1,3 +1,4 @@
+import { compareAmounts, isAmount } from "../amounts.js";
 import type { EvaluationContext, MarketPolicyRules } from "../types.js";
 import { mergeIntersect, mergeUpperBound, mergeUpperBoundNumber } from "../merge.js";
 import type { KindResult } from "./self.js";
@@ -11,12 +12,11 @@ export function combineMarketRulesRestrictive(a: MarketPolicyRules, b: MarketPol
   };
 }
 
-function parseAmountAsset(s: string | undefined): { amount: number; asset: string } | undefined {
+function parseAmountAsset(s: string | undefined): { amount: string; asset: string } | undefined {
   if (!s) return undefined;
   const [amount, asset] = s.split(" ");
-  const n = Number(amount);
-  if (!asset || !Number.isFinite(n)) return undefined;
-  return { amount: n, asset };
+  if (!asset || !isAmount(amount)) return undefined;
+  return { amount, asset };
 }
 
 export function evaluateMarketRules(rules: MarketPolicyRules, ctx: EvaluationContext): KindResult {
@@ -29,7 +29,12 @@ export function evaluateMarketRules(rules: MarketPolicyRules, ctx: EvaluationCon
 
   const max = parseAmountAsset(rules.maxPrice?.perRequest);
   const price = parseAmountAsset(intent.price);
-  if (max && price && max.asset === price.asset && price.amount > max.amount) {
+  // A price ceiling or a price that can't be read denies, rather than the check being skipped.
+  if (rules.maxPrice?.perRequest !== undefined && !max) {
+    reasons.push(`maxPrice.perRequest "${rules.maxPrice.perRequest}" is not "<decimal amount> <asset>"`);
+  } else if (max && intent.price !== undefined && !price) {
+    reasons.push(`price "${intent.price}" is not "<decimal amount> <asset>"`);
+  } else if (max && price && max.asset === price.asset && compareAmounts(price.amount, max.amount) === 1) {
     reasons.push(`price ${intent.price} exceeds maxPrice.perRequest ${rules.maxPrice?.perRequest}`);
   }
 

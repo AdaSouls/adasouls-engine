@@ -7,7 +7,6 @@ import type {
   RulesFor,
 } from "./types.js";
 import { POLICY_EVALUATION_ORDER } from "./types.js";
-import { overrideDefined } from "./merge.js";
 import { combineSelfRulesRestrictive, evaluateSelfRules, type KindResult } from "./kinds/self.js";
 import { combineCounterpartyRulesRestrictive, evaluateCounterpartyRules } from "./kinds/counterparty.js";
 import { combineMarketRulesRestrictive, evaluateMarketRules } from "./kinds/market.js";
@@ -43,11 +42,11 @@ function isOrgScoped(policy: Policy): boolean {
  *   "fail-closed AND semantics," implemented at the rule-value level so
  *   a tighter earlier policy can never be silently dropped by a later
  *   one (see merge.ts).
- * - Agent-scoped policies then override org-scoped policies per rule
- *   KEY (simple replace, not restrictive-combine) -- "agent policy
- *   overrides org default policy for the same rule key," per
- *   11-policy-model.md, literally: a key an agent policy doesn't set
- *   still falls through to the org default.
+ * - Agent-scoped policies are then combined with the org-scoped ones
+ *   the same way. An organization's rules are a ceiling: an agent's own
+ *   policy can tighten any of them and loosen none. (Until 0.2.0 an
+ *   agent policy REPLACED the org's value for the same rule key, so an
+ *   agent-scoped policy could raise its own limit.)
  */
 function resolveEffectiveRules<K extends PolicyKind>(
   kind: K,
@@ -67,7 +66,7 @@ function resolveEffectiveRules<K extends PolicyKind>(
     undefined
   );
 
-  return agentMerged ? overrideDefined(orgMerged, agentMerged) : orgMerged;
+  return agentMerged ? handler.combineRestrictive(orgMerged, agentMerged) : orgMerged;
 }
 
 /**
