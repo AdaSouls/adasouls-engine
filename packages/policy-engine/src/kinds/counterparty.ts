@@ -1,3 +1,4 @@
+import { compareAmounts, isAmount } from "../amounts.js";
 import type { CounterpartyPolicyRules, EvaluationContext } from "../types.js";
 import { mergeAmountMap, mergeIntersect, mergeLowerBoundAmount, mergeLowerBoundNumber, mergeUnion, mergeUpperBoundNumber } from "../merge.js";
 import type { KindResult } from "./self.js";
@@ -50,8 +51,9 @@ export function evaluateCounterpartyRules(rules: CounterpartyPolicyRules, ctx: E
   }
   if (rules.minTokenHoldings) {
     for (const [asset, min] of Object.entries(rules.minTokenHoldings)) {
-      const held = Number(cp?.tokenHoldings?.[asset] ?? "0");
-      if (held < Number(min)) {
+      const held = cp?.tokenHoldings?.[asset] ?? "0";
+      if (!isAmount(min)) reasons.push(`minTokenHoldings for ${asset} is "${min}", which is not a decimal amount`);
+      else if (!isAmount(held) || compareAmounts(held, min) === -1) {
         reasons.push(`counterparty holds ${held} ${asset}, requires at least ${min} ${asset}`);
       }
     }

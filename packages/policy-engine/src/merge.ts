@@ -1,3 +1,5 @@
+import { compareAmounts, isAmount } from "./amounts.js";
+
 /**
  * "Most restrictive wins" combinators, used only to combine multiple
  * policies of the SAME kind at the SAME scope level (e.g. two org-level
@@ -5,8 +7,9 @@
  * denying denies the whole evaluation" (11-policy-model.md) requires: a
  * naive last-write-wins merge could silently drop a tighter limit set by
  * an earlier policy, which would be a fail-OPEN bug in an authorization
- * system. Cross-scope-level combination (agent overrides org) is a
- * separate, simpler shallow-replace -- see evaluate.ts.
+ * system. The same combinators apply across scope levels: an agent's
+ * own policy is combined with its organization's, so it can tighten a
+ * rule and never loosen one -- see evaluate.ts.
  *
  * One deliberate simplification, flagged rather than silently made:
  * "any-of" list rules (allowlist, communityMembership) are combined via
@@ -17,24 +20,27 @@
  * real false-deny in practice.
  */
 
-function num(v: string | undefined): number | undefined {
-  if (v === undefined) return undefined;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : undefined;
-}
-
-/** More restrictive of two optional upper-bound amounts (lower wins) -- maxTransaction, dailySpend, humanApprovalThreshold. */
+/**
+ * More restrictive of two optional upper-bound amounts (lower wins) -- maxTransaction, dailySpend, humanApprovalThreshold.
+ * A value that isn't an amount is kept rather than dropped: evaluation
+ * then denies on it, where dropping it would leave the looser limit in
+ * force without anyone having chosen that.
+ */
 export function mergeUpperBound(a: string | undefined, b: string | undefined): string | undefined {
   if (a === undefined) return b;
   if (b === undefined) return a;
-  return (num(a) ?? Infinity) <= (num(b) ?? Infinity) ? a : b;
+  if (!isAmount(a)) return a;
+  if (!isAmount(b)) return b;
+  return compareAmounts(a, b) <= 0 ? a : b;
 }
 
-/** More restrictive of two optional lower-bound amounts (higher wins) -- minTokenHoldings. */
+/** More restrictive of two optional lower-bound amounts (higher wins) -- minTokenHoldings. Same rule for a value that isn't an amount. */
 export function mergeLowerBoundAmount(a: string | undefined, b: string | undefined): string | undefined {
   if (a === undefined) return b;
   if (b === undefined) return a;
-  return (num(a) ?? -Infinity) >= (num(b) ?? -Infinity) ? a : b;
+  if (!isAmount(a)) return a;
+  if (!isAmount(b)) return b;
+  return compareAmounts(a, b) >= 0 ? a : b;
 }
 
 /** More restrictive of two optional numeric lower bounds (higher wins) -- minCompletedTransactions, minReputationEvidence.completedActions. */
@@ -78,13 +84,4 @@ export function mergeUnion(a: string[] | undefined, b: string[] | undefined): st
   if (!a) return b;
   if (!b) return a;
   return Array.from(new Set([...a, ...b]));
-}
-
-/** Shallow override: b's defined keys replace a's for the same key; undefined keys in b don't erase a's value. Used for agent-overrides-org (cross-scope-level). */
-export function overrideDefined<T extends object>(a: T, b: Partial<T>): T {
-  const out = { ...a };
-  for (const [k, v] of Object.entries(b)) {
-    if (v !== undefined) (out as Record<string, unknown>)[k] = v;
-  }
-  return out;
 }

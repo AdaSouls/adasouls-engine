@@ -1,4 +1,5 @@
 import type { EvaluationContext, SelfPolicyRules } from "../types.js";
+import { addAmounts, compareAmounts, isAmount } from "../amounts.js";
 import { mergeAmountMap, mergeIntersect, mergeUpperBound } from "../merge.js";
 
 export function combineSelfRulesRestrictive(a: SelfPolicyRules, b: SelfPolicyRules): SelfPolicyRules {
@@ -57,25 +58,39 @@ export function evaluateSelfRules(rules: SelfPolicyRules, ctx: EvaluationContext
   }
 
   let approvalsRequired: string[] = [];
-
   if (intent.asset && intent.amount !== undefined) {
-    const max = rules.maxTransaction?.[intent.asset];
-    if (max !== undefined && Number(intent.amount) > Number(max)) {
-      reasons.push(`amount ${intent.amount} ${intent.asset} exceeds maxTransaction ${max} ${intent.asset}`);
-    }
+    const asset = intent.asset;
+    // Anything that isn't a plain decimal amount denies: an amount or a
+    // limit that can't be read is never treated as zero or as no limit.
+    const limit = (name: string, value: string | undefined): string | undefined => {
+      if (value !== undefined && !isAmount(value)) reasons.push(`${name} for ${asset} is "${value}", which is not a decimal amount`);
+      return value !== undefined && isAmount(value) ? value : undefined;
+    };
+    const max = limit("maxTransaction", rules.maxTransaction?.[asset]);
+    const dailyLimit = limit("dailySpend", rules.dailySpend?.[asset]);
+    const approvalThreshold = limit("humanApprovalThreshold", rules.humanApprovalThreshold?.[asset]);
 
-    const dailyLimit = rules.dailySpend?.[intent.asset];
-    if (dailyLimit !== undefined) {
-      const spentSoFar = Number(ctx.dailySpendSoFar?.[intent.asset] ?? "0");
-      const projected = spentSoFar + Number(intent.amount);
-      if (projected > Number(dailyLimit)) {
-        reasons.push(`projected daily spend ${projected} ${intent.asset} exceeds dailySpend limit ${dailyLimit} ${intent.asset}`);
+    if (!isAmount(intent.amount)) {
+      reasons.push(`amount "${intent.amount}" is not a decimal amount`);
+    } else {
+      const amount = intent.amount;
+      if (max !== undefined && compareAmounts(amount, max) === 1) {
+        reasons.push(`amount ${amount} ${asset} exceeds maxTransaction ${max} ${asset}`);
       }
-    }
-
-    const approvalThreshold = rules.humanApprovalThreshold?.[intent.asset];
-    if (reasons.length === 0 && approvalThreshold !== undefined && Number(intent.amount) > Number(approvalThreshold)) {
-      approvalsRequired = ["human_approval"];
+      if (dailyLimit !== undefined) {
+        const spentSoFar = ctx.dailySpendSoFar?.[asset] ?? "0";
+        if (!isAmount(spentSoFar)) {
+          reasons.push(`the amount of ${asset} spent so far today ("${spentSoFar}") is not a decimal amount`);
+        } else {
+          const projected = addAmounts(spentSoFar, amount);
+          if (compareAmounts(projected, dailyLimit) === 1) {
+            reasons.push(`projected daily spend ${projected} ${asset} exceeds dailySpend limit ${dailyLimit} ${asset}`);
+          }
+        }
+      }
+      if (reasons.length === 0 && approvalThreshold !== undefined && compareAmounts(amount, approvalThreshold) === 1) {
+        approvalsRequired = ["human_approval"];
+      }
     }
   }
 

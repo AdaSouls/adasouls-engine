@@ -167,21 +167,50 @@ describe("conflicting policies at the same scope level combine restrictively (fa
   });
 });
 
-describe("agent policy overrides org policy for the same rule key", () => {
-  it("agent's tighter maxTransaction replaces the org default", () => {
+describe("an organization's rules are a ceiling: an agent's own policy can tighten them, never loosen them", () => {
+  it("an agent's tighter maxTransaction applies", () => {
     const orgDefault = selfPolicy({ maxTransaction: { USDC: "1000" } }, {}, "pol_org");
-    const agentOverride = selfPolicy({ maxTransaction: { USDC: "20" } }, { agentId: AGENT }, "pol_agent");
-    const result = evaluatePolicy([orgDefault, agentOverride], ctx({ intent: { capability: "pay", asset: "USDC", amount: "100" } }));
+    const agentOwn = selfPolicy({ maxTransaction: { USDC: "20" } }, { agentId: AGENT }, "pol_agent");
+    const result = evaluatePolicy([orgDefault, agentOwn], ctx({ intent: { capability: "pay", asset: "USDC", amount: "100" } }));
     expect(result.allowed).toBe(false);
     expect(result.reasons[0]).toContain("exceeds maxTransaction 20 USDC");
   });
 
+  it("an agent's looser maxTransaction changes nothing: the organization's limit still applies", () => {
+    const org = selfPolicy({ maxTransaction: { USDC: "20" } }, {}, "pol_org");
+    const agentOwn = selfPolicy({ maxTransaction: { USDC: "1000000" } }, { agentId: AGENT }, "pol_agent");
+    for (const policies of [[org, agentOwn], [agentOwn, org]]) {
+      const result = evaluatePolicy(policies, ctx({ intent: { capability: "pay", asset: "USDC", amount: "100" } }));
+      expect(result.allowed).toBe(false);
+      expect(result.reasons[0]).toContain("exceeds maxTransaction 20 USDC");
+    }
+  });
+
+  it("an agent can't widen the organization's lists, raise its approval threshold or its daily limit", () => {
+    const org = selfPolicy({ allowedAssets: ["USDC"], allowedActions: ["pay"], dailySpend: { USDC: "50" }, humanApprovalThreshold: { USDC: "10" } }, {}, "pol_org");
+    const agentOwn = selfPolicy({ allowedAssets: ["USDC", "DAI"], allowedActions: ["pay", "swap"], dailySpend: { USDC: "5000" }, humanApprovalThreshold: { USDC: "4000" } }, { agentId: AGENT }, "pol_agent");
+    const evaluate = (intent: EvaluationContext["intent"], dailySpendSoFar?: Record<string, string>) => evaluatePolicy([org, agentOwn], ctx({ intent, dailySpendSoFar }));
+
+    expect(evaluate({ capability: "pay", asset: "DAI", amount: "1" }).reasons[0]).toContain("allowedAssets");
+    expect(evaluate({ capability: "swap", asset: "USDC", amount: "1" }).reasons[0]).toContain("allowedActions");
+    expect(evaluate({ capability: "pay", asset: "USDC", amount: "5" }, { USDC: "48" }).reasons[0]).toContain("dailySpend limit 50 USDC");
+    expect(evaluate({ capability: "pay", asset: "USDC", amount: "11" }).approvalsRequired).toEqual(["human_approval"]);
+    expect(evaluate({ capability: "pay", asset: "USDC", amount: "9" }).allowed).toBe(true);
+  });
+
+  it("the same holds for counterparty rules: an agent's own allowlist can't add to the organization's", () => {
+    const org: Policy<"counterparty"> = { id: "pol_org_cp", kind: "counterparty", version: 1, scope: {}, rules: { allowlist: ["alma:main:agent:supplier"] } };
+    const agentOwn: Policy<"counterparty"> = { id: "pol_agent_cp", kind: "counterparty", version: 1, scope: { agentId: AGENT }, rules: { allowlist: ["alma:main:agent:supplier", "alma:main:agent:stranger"] } };
+    expect(evaluatePolicy([org, agentOwn], ctx({ counterparty: { id: "alma:main:agent:stranger" } })).allowed).toBe(false);
+    expect(evaluatePolicy([org, agentOwn], ctx({ counterparty: { id: "alma:main:agent:supplier" } })).allowed).toBe(true);
+  });
+
   it("a key the agent policy doesn't set still falls through to the org default", () => {
     const orgDefault = selfPolicy({ allowedActions: ["pay"] }, {}, "pol_org");
-    const agentOverride = selfPolicy({ maxTransaction: { USDC: "20" } }, { agentId: AGENT }, "pol_agent");
+    const agentOwn = selfPolicy({ maxTransaction: { USDC: "20" } }, { agentId: AGENT }, "pol_agent");
     // "swap" isn't in the org's allowedActions, and the agent policy never touched that key
     const result = evaluatePolicy(
-      [orgDefault, agentOverride],
+      [orgDefault, agentOwn],
       ctx({ intent: { capability: "swap", asset: "USDC", amount: "1" } })
     );
     expect(result.allowed).toBe(false);
@@ -265,5 +294,52 @@ describe("evaluation order and short-circuit", () => {
       ctx({ intent: { capability: "pay", asset: "USDC", amount: "750" } })
     );
     expect(result).toMatchObject({ allowed: false, approvalsRequired: ["human_approval"], reasons: [] });
+  });
+});
+
+describe("amounts are compared exactly, and anything that isn't an amount denies", () => {
+  const pay = (amount: string, rules: Policy<"self">["rules"], dailySpendSoFar?: Record<string, string>) =>
+    evaluatePolicy([selfPolicy(rules)], ctx({ intent: { capability: "pay", asset: "USDC", amount }, dailySpendSoFar }));
+
+  it("decimal fractions add up to what they say", () => {
+    // As floating point, 0.1 + 0.2 is 0.30000000000000004 and would be refused.
+    expect(pay("0.2", { dailySpend: { USDC: "0.3" } }, { USDC: "0.1" }).allowed).toBe(true);
+    expect(pay("0.2", { dailySpend: { USDC: "0.3" } }, { USDC: "0.11" }).reasons).toEqual(["projected daily spend 0.31 USDC exceeds dailySpend limit 0.3 USDC"]);
+  });
+
+  it("a difference past the sixteenth digit still counts", () => {
+    // As floating point these two are the same number, and the payment would pass.
+    expect(pay("9007199254740993", { maxTransaction: { USDC: "9007199254740992" } }).allowed).toBe(false);
+    expect(pay("1.000000000000000001", { maxTransaction: { USDC: "1" } }).allowed).toBe(false);
+    expect(pay("1.000", { maxTransaction: { USDC: "1" } }).allowed).toBe(true);
+  });
+
+  it("an amount that isn't a plain decimal is refused, not read as zero", () => {
+    for (const amount of ["", " ", "-5", "1e3", "0x10", "Infinity", "1,000", "abc"]) {
+      const result = pay(amount, { maxTransaction: { USDC: "100" } });
+      expect(result.allowed, amount).toBe(false);
+      expect(result.reasons[0]).toContain("is not a decimal amount");
+    }
+  });
+
+  it("a negative amount can't be used to lower what was spent today", () => {
+    expect(pay("-40", { dailySpend: { USDC: "50" } }, { USDC: "45" }).allowed).toBe(false);
+  });
+
+  it("a limit that can't be read denies, and is never dropped in favour of a looser one", () => {
+    expect(pay("1", { maxTransaction: { USDC: "one hundred" } }).reasons[0]).toContain("maxTransaction for USDC");
+    expect(pay("1", { dailySpend: { USDC: "" } }).allowed).toBe(false);
+    const org = selfPolicy({ maxTransaction: { USDC: "ten" } }, {}, "pol_org");
+    const agentOwn = selfPolicy({ maxTransaction: { USDC: "1000" } }, { agentId: AGENT }, "pol_agent");
+    expect(evaluatePolicy([org, agentOwn], ctx({ intent: { capability: "pay", asset: "USDC", amount: "1" } })).allowed).toBe(false);
+    expect(pay("1", { dailySpend: { USDC: "50" } }, { USDC: "lots" }).allowed).toBe(false);
+  });
+
+  it("a price ceiling that can't be read denies", () => {
+    const market: Policy<"market"> = { id: "pol_market", kind: "market", version: 1, scope: {}, rules: { maxPrice: { perRequest: "cheap USDC" } } };
+    expect(evaluatePolicy([market], ctx({ intent: { capability: "pay", asset: "USDC", amount: "1", price: "1 USDC" } })).allowed).toBe(false);
+    const priced: Policy<"market"> = { ...market, rules: { maxPrice: { perRequest: "0.3 USDC" } } };
+    expect(evaluatePolicy([priced], ctx({ intent: { capability: "pay", asset: "USDC", amount: "1", price: "0.30 USDC" } })).allowed).toBe(true);
+    expect(evaluatePolicy([priced], ctx({ intent: { capability: "pay", asset: "USDC", amount: "1", price: "0.31 USDC" } })).allowed).toBe(false);
   });
 });

@@ -27,7 +27,8 @@
     "test": "vitest run",
     "test:testnet": "vitest run --config vitest.testnet.config.ts",
     "test:watch": "vitest",
-    "deploy:testnet-safe": "tsx scripts/deploy-testnet-safe.ts"
+    "deploy:testnet-safe": "tsx scripts/deploy-testnet-safe.ts",
+    "apply-limits": "tsx scripts/apply-limits.ts"
   },
   "dependencies": {
     "@safe-global/api-kit": "^2.5.6",
@@ -35,6 +36,7 @@
     "viem": "^2.21.32"
   },
   "devDependencies": {
+    "@adasouls/alma-manifest": "^0.2.1",
     "@types/node": "^22.7.0",
     "tsx": "^4.19.2",
     "typescript": "^5.6.0",
