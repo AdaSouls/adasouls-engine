@@ -61,6 +61,13 @@ export interface ExecutionResult {
    * (10-economic-action-lifecycle.md's needsReconciliation).
    */
   ambiguous?: boolean;
+  /**
+   * How the transfer left the account, for a smart account that has more
+   * than one way. "owner": signed as one of the account's owners, which
+   * no on-chain limit applies to. "allowance-module": signed as a
+   * delegate, capped by the module contract.
+   */
+  path?: "owner" | "allowance-module";
   detail?: Record<string, unknown>;
 }
 
@@ -69,6 +76,8 @@ export interface SpendingLimitCheck {
   reason?: string;
   /** The remaining allowance the provider itself enforces, if it can report one -- independent of AdaSouls's own policy-engine check. */
   remaining?: string;
+  /** Set when a contract enforces this limit, not only reports it. Absent: nothing on chain caps this signer. */
+  enforcedBy?: "allowance-module";
 }
 
 /**

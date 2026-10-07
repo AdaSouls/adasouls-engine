@@ -57,4 +57,40 @@ if (!privateKey || !safeAddress) {
       expect(status).toBe("confirmed");
     }, 60_000);
   });
+
+  /**
+   * The Lock level, for real: a signer that is a delegate of the
+   * Allowance Module and NOT an owner of the Safe. Needs, on top of the
+   * setup above:
+   *   - the batch from `npm run apply-limits` signed by the Safe's owner
+   *     (so the module is enabled and the delegate has a USDC allowance);
+   *   - the delegate's address funded with a little Base Sepolia ETH (it
+   *     pays its own gas);
+   *   - TESTNET_DELEGATE_PRIVATE_KEY=0x...
+   * Not run yet against a real Safe.
+   */
+  const delegateKey = process.env.TESTNET_DELEGATE_PRIVATE_KEY as `0x${string}` | undefined;
+  (delegateKey ? describe : describe.skip)("the agent's signer as an Allowance Module delegate", () => {
+    const delegated: ProviderConnectionRef = { chain: "base-sepolia", accountAddress: safeAddress, signer: { privateKey: delegateKey! } };
+
+    it("reports the on-chain allowance, and that a contract enforces it", async () => {
+      const check = await new SafeAccountProvider().checkSpendingLimit(delegated, { to: safeAddress, amount: "0.01", asset: USDC_BASE_SEPOLIA });
+      expect(check.enforcedBy).toBe("allowance-module");
+      expect(check.allowed).toBe(true);
+      console.log(`Left of the on-chain allowance: ${check.remaining}`);
+    });
+
+    it("moves funds through the module, within the allowance", async () => {
+      const result = await new SafeAccountProvider().execute(delegated, { to: safeAddress, amount: "0.01", asset: USDC_BASE_SEPOLIA });
+      expect(result.path).toBe("allowance-module");
+      console.log(`Executed through the module: ${result.providerRef}`);
+    }, 60_000);
+
+    it("the contract refuses a transfer over what is left, and nothing is broadcast", async () => {
+      const provider = new SafeAccountProvider();
+      const check = await provider.checkSpendingLimit(delegated, { to: safeAddress, amount: "1000000000", asset: USDC_BASE_SEPOLIA });
+      expect(check.allowed).toBe(false);
+      await expect(provider.execute(delegated, { to: safeAddress, amount: "1000000000", asset: USDC_BASE_SEPOLIA })).rejects.toThrow();
+    }, 60_000);
+  });
 }
