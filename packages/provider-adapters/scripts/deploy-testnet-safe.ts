@@ -12,7 +12,7 @@
  * Usage:
  *   TESTNET_SIGNER_PRIVATE_KEY=0x... npx tsx scripts/deploy-testnet-safe.ts
  */
-import Safe from "@safe-global/protocol-kit";
+import { SafeKit } from "../src/kinds/safe-kit.js";
 import { privateKeyToAccount } from "viem/accounts";
 import { BASE_SEPOLIA_PUBLIC_RPC } from "../src/kinds/base-sepolia-chain.js";
 
@@ -25,7 +25,7 @@ if (!privateKey) {
 const owner = privateKeyToAccount(privateKey).address;
 console.log(`Deploying a 1-of-1 Safe owned by ${owner} on Base Sepolia...`);
 
-const protocolKit = await Safe.init({
+const protocolKit = await SafeKit.init({
   provider: BASE_SEPOLIA_PUBLIC_RPC,
   signer: privateKey,
   predictedSafe: {

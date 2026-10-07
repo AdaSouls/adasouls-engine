@@ -1,4 +1,4 @@
-import Safe from "@safe-global/protocol-kit";
+import { SafeKit } from "./safe-kit.js";
 import { createPublicClient, createWalletClient, encodeFunctionData, erc20Abi, formatUnits, getAddress, http, parseUnits, zeroAddress } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { baseSepolia } from "viem/chains";
@@ -147,7 +147,7 @@ export class SafeAccountProvider implements AccountProvider {
       return { providerRef: txHash, status: "pending", txHash, ambiguous: true, path: "allowance-module" };
     }
 
-    const protocolKit = await Safe.init({
+    const protocolKit = await SafeKit.init({
       provider: this.rpcUrl,
       signer: connection.signer.privateKey,
       safeAddress: connection.accountAddress,
