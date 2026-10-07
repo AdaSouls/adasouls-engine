@@ -23,8 +23,8 @@ const safeAddress = process.env.TESTNET_SAFE_ADDRESS;
 // Base Sepolia's canonical USDC (Circle-issued test USDC). Confirmed via
 // eth_getCode against the public RPC that this address has real contract
 // code matching an upgradeable-proxy pattern (consistent with how Circle
-// deploys USDC) -- not independently confirmed to actually be USDC
-// specifically (would need a real transfer to fully prove that).
+// deploys USDC), and that Circle's faucet funds a Safe with it on Base
+// Sepolia, where it was transferred through the Allowance Module.
 const USDC_BASE_SEPOLIA = process.env.TESTNET_USDC_ADDRESS ?? "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
 
 if (!privateKey || !safeAddress) {
@@ -67,7 +67,8 @@ if (!privateKey || !safeAddress) {
    *   - the delegate's address funded with a little Base Sepolia ETH (it
    *     pays its own gas);
    *   - TESTNET_DELEGATE_PRIVATE_KEY=0x...
-   * Not run yet against a real Safe.
+   * The same path was run against a real Safe on 2026-10-07 (see the
+   * README). These cases need an allowance with something left of it.
    */
   const delegateKey = process.env.TESTNET_DELEGATE_PRIVATE_KEY as `0x${string}` | undefined;
   (delegateKey ? describe : describe.skip)("the agent's signer as an Allowance Module delegate", () => {

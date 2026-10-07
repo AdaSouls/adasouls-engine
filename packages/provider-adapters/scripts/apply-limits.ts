@@ -14,9 +14,10 @@
  *     [--manifest ./alma.yaml] [--out ./alma-limits.json] \
  *     [--rpc https://sepolia.base.org] [--module 0x…] [--token DAI=0x…]
  *
- * NOT YET VERIFIED: the batch has not been imported into Safe{Wallet} or
- * executed on a real Safe. The calldata is tested against the module's
- * ABI; check what the Transaction Builder shows before signing.
+ * The batch's transactions were executed on a real Safe on Base Sepolia
+ * (from code, see scripts/execute-batch-testnet.ts) and did what they
+ * say. NOT YET VERIFIED: importing the file into Safe{Wallet}. Check
+ * what the Transaction Builder shows before signing.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { parseArgs } from "node:util";

@@ -37,21 +37,19 @@ const predictedAddress = await protocolKit.getAddress();
 console.log(`Predicted Safe address: ${predictedAddress}`);
 
 const deploymentTransaction = await protocolKit.createSafeDeploymentTransaction();
-// NOTE: not yet verified end to end against a live network. If
-// protocolKit doesn't expose a direct send/execute for its own deployment
-// transaction in the installed SDK version, send `deploymentTransaction`
-// (it has `.to`, `.value`, `.data`) with any viem/ethers wallet client
-// signing as `owner`.
+// Run against Base Sepolia on 2026-10-07 (it deployed the test Safe).
 const externalSigner = await protocolKit.getSafeProvider().getExternalSigner();
 if (!externalSigner) {
   throw new Error("No external signer available from protocolKit.getSafeProvider() -- see the NOTE above.");
 }
-const txHash = await externalSigner.sendTransaction({
+const sent: unknown = await externalSigner.sendTransaction({
   to: deploymentTransaction.to as `0x${string}`,
   value: BigInt(deploymentTransaction.value),
   data: deploymentTransaction.data as `0x${string}`,
 });
 
+// The signer answers with the hash or with a response object that has it, depending on the SDK version.
+const txHash = typeof sent === "string" ? sent : (sent as { hash: string }).hash;
 console.log(`Deployment tx sent: ${txHash}`);
 console.log(`Once confirmed, your testnet Safe address is: ${predictedAddress}`);
 console.log(`Set TESTNET_SAFE_ADDRESS=${predictedAddress} for the integration test.`);

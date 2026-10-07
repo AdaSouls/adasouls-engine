@@ -40,9 +40,9 @@ import { BASE_SEPOLIA_PUBLIC_RPC, BaseSepoliaChainAdapter } from "./base-sepolia
  *      and NO on-chain limit applies. checkSpendingLimit() says so
  *      (no `enforcedBy`) instead of pretending a limit was checked.
  *    Reads are verified against the module on Base Sepolia (see
- *    allowance-module.ts). The delegate path's transaction has not been
- *    run against a real Safe yet: test/safe.testnet.test.ts has the
- *    case, and it needs a funded Safe with an allowance set.
+ *    allowance-module.ts), and the delegate path was run against a
+ *    real Safe there on 2026-10-07: within the allowance it moved
+ *    funds, over it the contract reverted (see the README).
  * 4. Failure semantics: execute() can throw before broadcast (rejected,
  *    e.g. insufficient signatures or a reverted simulation) or succeed
  *    with a txHash whose on-chain status is checked separately via

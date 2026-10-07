@@ -38,8 +38,9 @@ export const SAFE_MODULE_ABI = parseAbi([
  * 0x7aa63affdca06fe94576f00077ad61a02ccf203a5da31e1b4ed595df7b65cf3e),
  * NAME() is "Allowance Module", VERSION() is "0.1.1", and
  * getTokenAllowance / getDelegates / generateTransferHash answer.
- * The state-changing functions (setAllowance, executeAllowanceTransfer)
- * have NOT been exercised from this code against a real Safe yet.
+ * The state-changing functions (enableModule, addDelegate, setAllowance,
+ * executeAllowanceTransfer) were run from this code against a real Safe
+ * on Base Sepolia the same day: see the README.
  */
 export const ALLOWANCE_MODULE_BASE_SEPOLIA = "0xAA46724893dedD72658219405185Fb0Fc91e091C" as const;
 
