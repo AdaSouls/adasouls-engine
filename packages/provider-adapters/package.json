@@ -1,6 +1,6 @@
 {
   "name": "@adasouls/provider-adapters",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "WalletProvider/AccountProvider/ChainAdapter/... interfaces (ADR-006) plus a mock and a real Safe-on-Base-Sepolia implementation -- see docs/09-custody-and-key-management.md.",
   "type": "module",
   "main": "./dist/index.js",
