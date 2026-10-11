@@ -44,6 +44,9 @@ export interface CounterpartyPolicyRules {
   communityMembership?: string[];
   allowlist?: string[];
   blocklist?: string[];
+  /** Whom the counterparty acts for: the ALMA ids of the organizations or people it may belong to. */
+  allowedPrincipals?: string[];
+  blockedPrincipals?: string[];
 }
 
 export interface MarketPolicyRules {
@@ -85,6 +88,8 @@ export interface Policy<K extends PolicyKind = PolicyKind> {
 
 export interface CounterpartyContext {
   id: string;
+  /** The ALMA id of the organization or person the counterparty acts for. Absent when nobody is known to answer for it. */
+  principalId?: string;
   reputationEvidence?: { completedActions: number; disputeRate: number };
   credentials?: string[];
   tokenHoldings?: Record<string, string>;

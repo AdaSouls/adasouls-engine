@@ -22,6 +22,8 @@ export function combineCounterpartyRulesRestrictive(
     communityMembership: mergeIntersect(a.communityMembership, b.communityMembership),
     allowlist: mergeIntersect(a.allowlist, b.allowlist),
     blocklist: mergeUnion(a.blocklist, b.blocklist),
+    allowedPrincipals: mergeIntersect(a.allowedPrincipals, b.allowedPrincipals),
+    blockedPrincipals: mergeUnion(a.blockedPrincipals, b.blockedPrincipals),
   };
 }
 
@@ -36,10 +38,28 @@ export function evaluateCounterpartyRules(rules: CounterpartyPolicyRules, ctx: E
       return { outcome: "fail", reasons: [`counterparty "${cp.id}" is on the blocklist`], approvalsRequired: [] };
     }
   }
+  // Whom the counterparty acts for: without a principalId nobody is known
+  // to answer for it, so neither list can be checked, and either denies.
+  if (rules.blockedPrincipals) {
+    if (!cp?.principalId) {
+      return { outcome: "fail", reasons: ["principalId required: blockedPrincipals is set and the counterparty is not known to act for anyone"], approvalsRequired: [] };
+    }
+    if (rules.blockedPrincipals.includes(cp.principalId)) {
+      return { outcome: "fail", reasons: [`counterparty acts for "${cp.principalId}", which is blocked`], approvalsRequired: [] };
+    }
+  }
   // An allowlist that is set is checked even when empty: one that came
   // out of a merge with nothing in common allows nobody.
   if (rules.allowlist && (!cp || !rules.allowlist.includes(cp.id))) {
     reasons.push(`counterparty "${cp?.id ?? "unknown"}" is not on the allowlist`);
+  }
+  // Checked even when empty, like allowlist. A counterparty nobody is known to answer for is denied: the rule names whom it must act for.
+  if (rules.allowedPrincipals && (!cp?.principalId || !rules.allowedPrincipals.includes(cp.principalId))) {
+    reasons.push(
+      !cp?.principalId
+        ? "principalId required: allowedPrincipals is set and the counterparty is not known to act for anyone"
+        : `counterparty acts for "${cp.principalId}", which is not among the allowed principals`
+    );
   }
   if (rules.minReputationEvidence) {
     const { completedActions, disputeRate } = rules.minReputationEvidence;

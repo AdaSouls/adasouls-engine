@@ -78,7 +78,7 @@ export function mergeAmountMap(
 }
 
 /**
- * More restrictive "must be in this set" list -- allowedAssets, allowedProtocols, allowedContracts, allowedActions, allowlist, communityMembership, allowedChains, allowedWalletProviders, allowedPaymentRails, allowedCurrencies.
+ * More restrictive "must be in this set" list -- allowedAssets, allowedProtocols, allowedContracts, allowedActions, allowlist, allowedPrincipals, communityMembership, allowedChains, allowedWalletProviders, allowedPaymentRails, allowedCurrencies.
  * Two lists give their intersection even when it is empty, and an empty list allows nothing.
  */
 export function mergeIntersect(a: string[] | undefined, b: string[] | undefined): string[] | undefined {
@@ -87,7 +87,7 @@ export function mergeIntersect(a: string[] | undefined, b: string[] | undefined)
   return a.filter((x) => b.includes(x));
 }
 
-/** More restrictive "requires all of these" / "deny any of these" list -- requiredCredentials, blocklist. */
+/** More restrictive "requires all of these" / "deny any of these" list -- requiredCredentials, blocklist, blockedPrincipals. */
 export function mergeUnion(a: string[] | undefined, b: string[] | undefined): string[] | undefined {
   if (!a) return b;
   if (!b) return a;
