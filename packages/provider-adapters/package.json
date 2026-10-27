@@ -1,7 +1,7 @@
 {
   "name": "@adasouls/provider-adapters",
   "version": "0.2.0",
-  "description": "WalletProvider/AccountProvider/ChainAdapter/... interfaces (ADR-006) plus a mock and a real Safe-on-Base-Sepolia implementation -- see docs/09-custody-and-key-management.md.",
+  "description": "WalletProvider/AccountProvider/ChainAdapter/... interfaces (ADR-006) plus a mock, a real Safe-on-Base-Sepolia implementation and a Stripe test-mode payment provider -- see docs/09-custody-and-key-management.md.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -26,6 +26,7 @@
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
     "test:testnet": "vitest run --config vitest.testnet.config.ts",
+    "test:stripe": "vitest run --config vitest.sandbox.config.ts",
     "test:watch": "vitest",
     "deploy:testnet-safe": "tsx scripts/deploy-testnet-safe.ts",
     "apply-limits": "tsx scripts/apply-limits.ts"
@@ -33,6 +34,7 @@
   "dependencies": {
     "@safe-global/api-kit": "^2.5.6",
     "@safe-global/protocol-kit": "^4.1.1",
+    "stripe": "^23.0.1",
     "viem": "^2.21.32"
   },
   "devDependencies": {
