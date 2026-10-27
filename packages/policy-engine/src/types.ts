@@ -18,8 +18,21 @@ export interface SelfPolicyRules {
   allowedProtocols?: string[];
   allowedContracts?: string[];
   allowedActions?: string[]; // capabilities
-  timeRestrictions?: { timezone: string; allowedHours: [number, number] };
+  /** One window, or several that must ALL hold -- combining policies produces the list. */
+  timeRestrictions?: TimeWindow | TimeWindow[];
   humanApprovalThreshold?: Record<string, string>; // asset -> amount above which approval is required
+}
+
+/**
+ * Hours of the day an action may happen in, in `timezone` (an IANA name,
+ * UTC when omitted). The start hour is included and the end hour is not:
+ * [9, 17] allows 09:00 to 16:59. A start after the end wraps past
+ * midnight: [22, 6] allows 22:00 to 05:59. [0, 24] is the whole day, and
+ * a start equal to the end allows no hour at all.
+ */
+export interface TimeWindow {
+  timezone?: string;
+  allowedHours: [number, number];
 }
 
 export interface CounterpartyPolicyRules {
@@ -34,7 +47,12 @@ export interface CounterpartyPolicyRules {
 }
 
 export interface MarketPolicyRules {
-  maxPrice?: { perRequest?: string }; // "<amount> <asset>", e.g. "1 USDC"
+  /**
+   * "<amount> <asset>", e.g. "1 USDC", or one such cap per asset. Once any
+   * cap is set, a price in an asset without one is denied: prices are
+   * never converted between assets.
+   */
+  maxPrice?: { perRequest?: string | string[] };
   allowedCurrencies?: string[];
   minSLA?: { successRate?: number };
   maxSlippage?: number;
@@ -97,7 +115,7 @@ export interface EvaluationContext {
   counterparty?: CounterpartyContext;
   /** Cumulative spend so far today, per asset -- policy-engine has no persistence (per its own non-responsibilities), the caller supplies this. */
   dailySpendSoFar?: Record<string, string>;
-  /** Injectable clock, for deterministic time-restriction tests. */
+  /** Injectable clock, for deterministic time-restriction tests. Defaults to the current time. */
   now?: Date;
 }
 

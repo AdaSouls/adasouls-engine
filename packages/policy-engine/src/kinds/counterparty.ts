@@ -29,10 +29,16 @@ export function evaluateCounterpartyRules(rules: CounterpartyPolicyRules, ctx: E
   const reasons: string[] = [];
   const cp = ctx.counterparty;
 
-  if (rules.blocklist && cp && rules.blocklist.includes(cp.id)) {
-    return { outcome: "fail", reasons: [`counterparty "${cp.id}" is on the blocklist`], approvalsRequired: [] };
+  if (rules.blocklist) {
+    // Without a counterparty there is nobody to check the list against.
+    if (!cp) return { outcome: "fail", reasons: ["counterparty required: blocklist is set and the context has no counterparty"], approvalsRequired: [] };
+    if (rules.blocklist.includes(cp.id)) {
+      return { outcome: "fail", reasons: [`counterparty "${cp.id}" is on the blocklist`], approvalsRequired: [] };
+    }
   }
-  if (rules.allowlist && rules.allowlist.length > 0 && (!cp || !rules.allowlist.includes(cp.id))) {
+  // An allowlist that is set is checked even when empty: one that came
+  // out of a merge with nothing in common allows nobody.
+  if (rules.allowlist && (!cp || !rules.allowlist.includes(cp.id))) {
     reasons.push(`counterparty "${cp?.id ?? "unknown"}" is not on the allowlist`);
   }
   if (rules.minReputationEvidence) {
@@ -64,9 +70,15 @@ export function evaluateCounterpartyRules(rules: CounterpartyPolicyRules, ctx: E
   if (rules.organizationVerification === "required" && !cp?.organizationVerified) {
     reasons.push("counterparty organization is not verified");
   }
-  if (rules.communityMembership && rules.communityMembership.length > 0) {
+  if (rules.communityMembership) {
     const member = rules.communityMembership.some((c) => (cp?.communities ?? []).includes(c));
-    if (!member) reasons.push(`counterparty is not a member of any required community: ${rules.communityMembership.join(", ")}`);
+    if (!member) {
+      reasons.push(
+        rules.communityMembership.length === 0
+          ? "counterparty can't be a member of a required community: the combined communityMembership list is empty"
+          : `counterparty is not a member of any required community: ${rules.communityMembership.join(", ")}`
+      );
+    }
   }
 
   return reasons.length > 0

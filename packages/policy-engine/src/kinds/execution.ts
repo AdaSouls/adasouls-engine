@@ -15,18 +15,17 @@ export function evaluateExecutionRules(rules: ExecutionPolicyRules, ctx: Evaluat
   const reasons: string[] = [];
   const { intent } = ctx;
 
-  if (rules.allowedChains && intent.chain && !rules.allowedChains.includes(intent.chain)) {
-    reasons.push(`chain "${intent.chain}" is not in allowedChains [${rules.allowedChains.join(", ")}]`);
-  }
-  if (rules.allowedWalletProviders && intent.walletProvider && !rules.allowedWalletProviders.includes(intent.walletProvider)) {
-    reasons.push(`wallet provider "${intent.walletProvider}" is not in allowedWalletProviders [${rules.allowedWalletProviders.join(", ")}]`);
-  }
-  if (rules.allowedPaymentRails && intent.paymentRail && !rules.allowedPaymentRails.includes(intent.paymentRail)) {
-    reasons.push(`payment rail "${intent.paymentRail}" is not in allowedPaymentRails [${rules.allowedPaymentRails.join(", ")}]`);
-  }
-  if (rules.allowedProtocols && intent.protocol && !rules.allowedProtocols.includes(intent.protocol)) {
-    reasons.push(`protocol "${intent.protocol}" is not in allowedProtocols [${rules.allowedProtocols.join(", ")}]`);
-  }
+  // An allow-list that is set is always checked: an empty list allows
+  // nothing, and an intent that leaves the field out is denied.
+  const check = (rule: string, list: string[] | undefined, field: string, value: string | undefined) => {
+    if (!list) return;
+    if (!value) reasons.push(`${field} required: ${rule} is set and the intent has no ${field}`);
+    else if (!list.includes(value)) reasons.push(`${field} "${value}" is not in ${rule} [${list.join(", ")}]`);
+  };
+  check("allowedChains", rules.allowedChains, "chain", intent.chain);
+  check("allowedWalletProviders", rules.allowedWalletProviders, "walletProvider", intent.walletProvider);
+  check("allowedPaymentRails", rules.allowedPaymentRails, "paymentRail", intent.paymentRail);
+  check("allowedProtocols", rules.allowedProtocols, "protocol", intent.protocol);
 
   return reasons.length > 0
     ? { outcome: "fail", reasons, approvalsRequired: [] }
