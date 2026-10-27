@@ -1,5 +1,17 @@
 # @adasouls/policy-engine
 
+## 0.3.0
+
+### Minor Changes
+
+- [#13](https://github.com/AdaSouls/adasouls-engine/pull/13) [`3e9dc32`](https://github.com/AdaSouls/adasouls-engine/commit/3e9dc32aa01c708f00ebd6801863224c1f8c5f89) Thanks [@MatiFalcone](https://github.com/MatiFalcone)! - Security fix: two allow-lists with nothing in common now allow nothing. An organization `allowlist: ["A"]` combined with an agent's `["B"]` came out as `[]`, which was read as "no restriction", so any counterparty passed; the same held for `communityMembership`. An empty list, whether written or produced by combining, is now checked like any other and allows nobody. Only a list that is left out restricts nothing.
+
+- [#13](https://github.com/AdaSouls/adasouls-engine/pull/13) [`3e9dc32`](https://github.com/AdaSouls/adasouls-engine/commit/3e9dc32aa01c708f00ebd6801863224c1f8c5f89) Thanks [@MatiFalcone](https://github.com/MatiFalcone)! - Security fix: `maxPrice.perRequest` caps are now combined, keeping the lower cap per asset. Before, the first policy's cap won, so an agent's looser cap could replace the organization's, and a price in a different asset from the cap was never checked. `perRequest` may now be a list with one cap per asset; once any cap is set, a price in an asset without one is denied (no conversion). Prices are compared as exact decimals, and a cap with no price in the intent denies.
+
+- [#13](https://github.com/AdaSouls/adasouls-engine/pull/13) [`3e9dc32`](https://github.com/AdaSouls/adasouls-engine/commit/3e9dc32aa01c708f00ebd6801863224c1f8c5f89) Thanks [@MatiFalcone](https://github.com/MatiFalcone)! - Security fix: missing context for a rule that is set now denies, with a reason naming the field, instead of the rule being skipped. `maxTransaction`, `dailySpend` or `humanApprovalThreshold` with no `intent.asset` deny with "asset required" (or "amount required" without `intent.amount`); `allowedChains`, `allowedWalletProviders`, `allowedPaymentRails` and execution `allowedProtocols` deny when the intent leaves the field out, as do self `allowedAssets`/`allowedProtocols`/`allowedContracts`, market `allowedCurrencies` and `maxSlippage`; `minSLA` with no counterparty `successRate` denies with "not enough evidence"; a `blocklist` with no counterparty denies. Callers must now fill in every field a configured rule needs.
+
+- [#13](https://github.com/AdaSouls/adasouls-engine/pull/13) [`3e9dc32`](https://github.com/AdaSouls/adasouls-engine/commit/3e9dc32aa01c708f00ebd6801863224c1f8c5f89) Thanks [@MatiFalcone](https://github.com/MatiFalcone)! - Security fix: an agent can no longer widen its organization's time window. Combining two `timeRestrictions` kept the narrower window instead of their intersection, so an organization's `[9, 17]` with an agent's `[0, 5]` allowed 03:00. Every window now applies (`timeRestrictions` may be a list), so windows that don't overlap allow no hour. Also: the end hour is excluded (`[9, 17]` ends at 16:59), a start after the end wraps past midnight (`[22, 6]`), the window is read in its `timezone` (UTC when omitted; it was ignored before), an unknown timezone or out-of-range hours deny, and without `now` in the context the current time is used instead of the rule being skipped.
+
 ## 0.2.0
 
 ### Minor Changes
