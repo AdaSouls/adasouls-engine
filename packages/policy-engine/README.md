@@ -39,7 +39,7 @@ Evaluated in a fixed order: **self → counterparty → market → execution**.
 | Kind | Examples of rules |
 |---|---|
 | `self` | `maxTransaction`, `dailySpend`, `allowedAssets`, `allowedActions`, `timeRestrictions`, `humanApprovalThreshold` |
-| `counterparty` | `minCompletedTransactions`, `minReputationEvidence`, `organizationVerification`, `requiredCredentials`, `allowlist`, `blocklist` |
+| `counterparty` | `minCompletedTransactions`, `minReputationEvidence`, `organizationVerification`, `requiredCredentials`, `allowlist`, `blocklist`, `allowedPrincipals`, `blockedPrincipals` |
 | `market` | `maxPrice`, `maxSlippage`, `minSLA`, `allowedCurrencies` |
 | `execution` | `allowedChains`, `allowedWalletProviders`, `allowedPaymentRails`, `allowedProtocols` |
 

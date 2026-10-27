@@ -3,6 +3,9 @@ import { evaluatePolicy } from "../src/evaluate.js";
 import type { EvaluationContext, Policy } from "../src/types.js";
 
 const AGENT = "alma:main:agent:treasury-01";
+const ACME = "alma:main:organization:acme";
+const GLOBEX = "alma:main:organization:globex";
+const SHADY = "alma:main:human:shady";
 
 function ctx(overrides: Partial<EvaluationContext> = {}): EvaluationContext {
   return {
@@ -74,6 +77,49 @@ describe("self policy", () => {
 });
 
 describe("counterparty policy", () => {
+  it("allowedPrincipals: only counterparties acting for one of them pass; one nobody answers for is denied", () => {
+    const policies: Policy[] = [{ id: "p1", kind: "counterparty", version: 1, scope: {}, rules: { allowedPrincipals: [ACME] } }];
+    expect(evaluatePolicy(policies, ctx({ counterparty: { id: "agent_456", principalId: ACME } })).allowed).toBe(true);
+    const other = evaluatePolicy(policies, ctx({ counterparty: { id: "agent_456", principalId: GLOBEX } }));
+    expect(other.allowed).toBe(false);
+    expect(other.reasons[0]).toContain(GLOBEX);
+    const unknown = evaluatePolicy(policies, ctx({ counterparty: { id: "0xabc" } }));
+    expect(unknown.allowed).toBe(false);
+    expect(unknown.reasons[0]).toContain("not known to act for");
+    expect(evaluatePolicy(policies, ctx({})).allowed).toBe(false);
+  });
+
+  it("blockedPrincipals: denies whoever acts for one of them, wins over allowedPrincipals, and denies the unknown", () => {
+    const policies: Policy[] = [{ id: "p1", kind: "counterparty", version: 1, scope: {}, rules: { allowedPrincipals: [SHADY], blockedPrincipals: [SHADY] } }];
+    const result = evaluatePolicy(policies, ctx({ counterparty: { id: "agent_456", principalId: SHADY } }));
+    expect(result.allowed).toBe(false);
+    expect(result.reasons).toEqual([`counterparty acts for "${SHADY}", which is blocked`]);
+    const onlyBlocked: Policy[] = [{ id: "p2", kind: "counterparty", version: 1, scope: {}, rules: { blockedPrincipals: [SHADY] } }];
+    // Nobody is known to answer for it, so the list can't be checked: denied, naming the field.
+    expect(evaluatePolicy(onlyBlocked, ctx({ counterparty: { id: "0xabc" } })).reasons).toEqual([
+      "principalId required: blockedPrincipals is set and the counterparty is not known to act for anyone",
+    ]);
+    expect(evaluatePolicy(onlyBlocked, ctx({})).allowed).toBe(false);
+    expect(evaluatePolicy(onlyBlocked, ctx({ counterparty: { id: "0xabc", principalId: ACME } })).allowed).toBe(true);
+  });
+
+  it("allowedPrincipals with nothing in common allow nobody, and an empty list allows nobody", () => {
+    const org: Policy<"counterparty"> = { id: "org", kind: "counterparty", version: 1, scope: {}, rules: { allowedPrincipals: [ACME] } };
+    const agentOwn: Policy<"counterparty"> = { id: "agent", kind: "counterparty", version: 1, scope: { agentId: AGENT }, rules: { allowedPrincipals: [GLOBEX] } };
+    for (const principalId of [ACME, GLOBEX, SHADY]) {
+      expect(evaluatePolicy([org, agentOwn], ctx({ counterparty: { id: "agent_456", principalId } })).allowed, principalId).toBe(false);
+    }
+    const empty: Policy<"counterparty"> = { ...org, rules: { allowedPrincipals: [] } };
+    expect(evaluatePolicy([empty], ctx({ counterparty: { id: "agent_456", principalId: ACME } })).allowed).toBe(false);
+  });
+
+  it("allowlist and allowedPrincipals both apply: the agent must be listed and act for an allowed principal", () => {
+    const policies: Policy[] = [{ id: "p1", kind: "counterparty", version: 1, scope: {}, rules: { allowlist: ["agent_456"], allowedPrincipals: [ACME] } }];
+    expect(evaluatePolicy(policies, ctx({ counterparty: { id: "agent_456", principalId: ACME } })).allowed).toBe(true);
+    expect(evaluatePolicy(policies, ctx({ counterparty: { id: "agent_789", principalId: ACME } })).allowed).toBe(false);
+    expect(evaluatePolicy(policies, ctx({ counterparty: { id: "agent_456", principalId: GLOBEX } })).allowed).toBe(false);
+  });
+
   it("blocks a blocklisted counterparty even if also allowlisted (deny wins)", () => {
     const policies: Policy[] = [
       { id: "p1", kind: "counterparty", version: 1, scope: {}, rules: { allowlist: ["agent_456"], blocklist: ["agent_456"] } },
@@ -196,6 +242,14 @@ describe("an organization's rules are a ceiling: an agent's own policy can tight
     expect(evaluate({ capability: "pay", asset: "USDC", amount: "5" }, { USDC: "48" }).reasons[0]).toContain("dailySpend limit 50 USDC");
     expect(evaluate({ capability: "pay", asset: "USDC", amount: "11" }).approvalsRequired).toEqual(["human_approval"]);
     expect(evaluate({ capability: "pay", asset: "USDC", amount: "9" }).allowed).toBe(true);
+  });
+
+  it("an agent's own allowedPrincipals can't add to the organization's, and blocked ones add up", () => {
+    const org: Policy<"counterparty"> = { id: "pol_org_cp", kind: "counterparty", version: 1, scope: {}, rules: { allowedPrincipals: [ACME], blockedPrincipals: [SHADY] } };
+    const agentOwn: Policy<"counterparty"> = { id: "pol_agent_cp", kind: "counterparty", version: 1, scope: { agentId: AGENT }, rules: { allowedPrincipals: [ACME, GLOBEX], blockedPrincipals: [GLOBEX] } };
+    expect(evaluatePolicy([org, agentOwn], ctx({ counterparty: { id: "alma:main:agent:a", principalId: GLOBEX } })).allowed).toBe(false);
+    expect(evaluatePolicy([org, agentOwn], ctx({ counterparty: { id: "alma:main:agent:a", principalId: SHADY } })).allowed).toBe(false);
+    expect(evaluatePolicy([org, agentOwn], ctx({ counterparty: { id: "alma:main:agent:a", principalId: ACME } })).allowed).toBe(true);
   });
 
   it("the same holds for counterparty rules: an agent's own allowlist can't add to the organization's", () => {
