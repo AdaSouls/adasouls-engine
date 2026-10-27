@@ -11,7 +11,8 @@
  * "WalletProvider, ChainAdapter" as a generic shorthand, but Safe is a
  * smart account, not an embedded/managed wallet -- per
  * docs/09-custody-and-key-management.md's table it's AccountProvider,
- * which is what's actually implemented here. The other seven interfaces
+ * which is what's actually implemented here. PaymentProvider followed,
+ * for the Stripe integration. The other six interfaces
  * are out of scope until a provider that needs them is integrated
  * (ADR-011-style "do not build before there's a concrete need").
  */
@@ -99,6 +100,45 @@ export interface AccountProvider {
   checkSpendingLimit(connection: ProviderConnectionRef, request: TransferRequest): Promise<SpendingLimitCheck>;
   execute(connection: ProviderConnectionRef, request: TransferRequest): Promise<ExecutionResult>;
   getStatus(connection: ProviderConnectionRef, providerRef: string): Promise<ExecutionResult>;
+}
+
+/**
+ * A card-rail payment, as the provider reports it. Amounts are integers
+ * in the currency's smallest unit (cents for usd), as the provider
+ * itself counts them: never converted here.
+ */
+export interface PaymentRecord {
+  /** The provider's id for the payment, e.g. a Stripe PaymentIntent id (pi_...). */
+  reference: string;
+  /** The provider's own status, e.g. "succeeded", "processing", "requires_payment_method". */
+  status: string;
+  amount: number;
+  /** Lowercase ISO 4217 code, e.g. "usd". */
+  currency: string;
+  /** When the provider created the payment, ISO 8601. */
+  createdAt: string;
+  /** Always false: a live-mode payment is refused, never returned. */
+  livemode: false;
+  /** The economic action this payment was made for (metadata.action_id), if it names one. */
+  actionId?: string;
+}
+
+export interface PaymentRequest {
+  /** The economic action being paid; stored as metadata.action_id and used as the idempotency key. */
+  actionId: string;
+  /** Integer, in the currency's smallest unit. */
+  amount: number;
+  /** Lowercase ISO 4217 code, e.g. "usd". */
+  currency: string;
+  description?: string;
+}
+
+/** Payment rails (Stripe) -- per 09-custody-and-key-management.md's table. */
+export interface PaymentProvider {
+  /** Reads a payment the provider holds: what it says happened, not what the caller was told. */
+  verify(reference: string): Promise<PaymentRecord>;
+  /** Pays for a buyer agent. */
+  pay(request: PaymentRequest): Promise<PaymentRecord>;
 }
 
 /** Chain-level reads, independent of which account/provider is acting -- per ADR-006. */

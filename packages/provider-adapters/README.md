@@ -27,7 +27,31 @@ organization brings its own provider connection.
 - `compileLimits()` and the `apply-limits` script (below): an agent's
   declared limits as the Safe transactions that set them on chain.
 
-`npm test` runs only against the mock — no credentials needed. It's a
+- `StripePaymentProvider` — a `PaymentProvider` for card payments, in
+  Stripe **test mode only** (`src/kinds/stripe.ts`):
+  - `verify(reference)` reads a PaymentIntent and returns its status,
+    amount (smallest currency unit), currency, creation time, `livemode`
+    and `metadata.action_id`.
+  - `pay({ actionId, amount, currency })`, for buyer agents, creates and
+    confirms a PaymentIntent in one server-side call with a Stripe test
+    card (`pm_card_visa` by default), redirect-based methods off
+    (`allow_redirects: "never"`, so no `return_url`) and
+    `error_on_requires_action`. The action id goes in
+    `metadata.action_id` and is the idempotency key, so a retry never
+    charges twice.
+  - The constructor refuses a live key (`sk_live_`, `rk_live_`) and
+    anything else that isn't `sk_test_`/`rk_test_`; any PaymentIntent that
+    comes back with `livemode: true` is refused, not returned.
+  - Nothing is logged. Results carry only the fields above, and errors
+    (`StripeAdapterError`) only Stripe's message, codes, request id and
+    PaymentIntent id, never the raw response or the key.
+
+  Against Stripe's test mode for real (not run by `npm test`):
+  ```bash
+  STRIPE_TEST_SECRET_KEY=sk_test_... npm run test:stripe
+  ```
+
+`npm test` runs only against the mocks — no credentials needed. It's a
 real dependency-free unit/contract test suite, safe to run anywhere,
 including CI.
 

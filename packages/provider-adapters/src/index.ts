@@ -4,3 +4,4 @@ export * from "./kinds/base-sepolia-chain.js";
 export * from "./kinds/safe.js";
 export * from "./kinds/allowance-module.js";
 export * from "./apply-limits.js";
+export * from "./kinds/stripe.js";
