@@ -1,5 +1,11 @@
 # @adasouls/policy-engine
 
+## 0.4.0
+
+### Minor Changes
+
+- [#12](https://github.com/AdaSouls/adasouls-engine/pull/12) [`f73aef5`](https://github.com/AdaSouls/adasouls-engine/commit/f73aef5a82041b1dd82526d704b975ae85f831da) Thanks [@MatiFalcone](https://github.com/MatiFalcone)! - Counterparty policies can say whom the other side must act for. `allowedPrincipals` lets an agent transact only with counterparties acting for one of the listed organizations or people; `blockedPrincipals` denies those acting for any of them. Both compare against the new `CounterpartyContext.principalId` (an ALMA id), which the caller resolves. A counterparty with no known principal is denied by either rule, since neither can be checked without one. Across scopes they combine like `allowlist` and `blocklist`: allowed lists intersect, even to an empty list that allows nobody, and blocked lists add up.
+
 ## 0.3.0
 
 ### Minor Changes
