@@ -55,6 +55,23 @@ agent's own), the more restrictive rule wins.
   a later kind denies, `approvalsRequired` is emptied: a denied action is
   never approvable. (Fixed in 0.1.3; earlier versions left the approvals
   in place.)
+- **A rule that exists is never skipped.** A rule left out (undefined)
+  restricts nothing. A rule that is set is always checked: an allow-list
+  that is empty, or that came out empty from combining two lists with
+  nothing in common, allows nothing; and if the context lacks what a rule
+  needs (an asset for `maxTransaction`, a chain for `allowedChains`, a
+  `successRate` for `minSLA`, ...) the evaluation denies with a reason
+  naming the missing field. (Since 0.3.0; earlier versions skipped those
+  checks.)
+- **Combining only narrows.** Lists intersect, limits take the tighter
+  value, `maxPrice` keeps the lowest cap per asset, and time windows all
+  apply. Once any `maxPrice` cap is set, a price in an asset with no cap is
+  denied: prices are never converted.
+- **Time windows** are `{ timezone?, allowedHours: [start, end] }`, read in
+  `timezone` (UTC when omitted). The end hour is excluded (`[9, 17]` ends
+  at 16:59), a start after the end wraps past midnight (`[22, 6]`), and
+  `[0, 24]` is the whole day. Without `now` in the context the current
+  time is used.
 - **Trust your inputs.** The engine believes the context it's given. Values
   such as a counterparty's `completedTransactions` or `dailySpendSoFar`
   should be computed by your server, never taken from the acting agent.

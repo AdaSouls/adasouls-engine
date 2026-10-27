@@ -11,6 +11,11 @@ import { compareAmounts, isAmount } from "./amounts.js";
  * own policy is combined with its organization's, so it can tighten a
  * rule and never loosen one -- see evaluate.ts.
  *
+ * A rule that is absent (undefined) restricts nothing; a rule that is
+ * present is always checked. Lists keep that apart from an empty list:
+ * two allow-lists with nothing in common combine to [], which allows
+ * nothing, never to "no list".
+ *
  * One deliberate simplification, flagged rather than silently made:
  * "any-of" list rules (allowlist, communityMembership) are combined via
  * intersection here. That's a safe (stricter) approximation, not a
@@ -72,7 +77,10 @@ export function mergeAmountMap(
   return out;
 }
 
-/** More restrictive "must be in this set" list -- allowedAssets, allowedProtocols, allowedContracts, allowedActions, allowlist, communityMembership, allowedChains, allowedWalletProviders, allowedPaymentRails, allowedCurrencies. */
+/**
+ * More restrictive "must be in this set" list -- allowedAssets, allowedProtocols, allowedContracts, allowedActions, allowlist, communityMembership, allowedChains, allowedWalletProviders, allowedPaymentRails, allowedCurrencies.
+ * Two lists give their intersection even when it is empty, and an empty list allows nothing.
+ */
 export function mergeIntersect(a: string[] | undefined, b: string[] | undefined): string[] | undefined {
   if (!a) return b;
   if (!b) return a;
@@ -84,4 +92,11 @@ export function mergeUnion(a: string[] | undefined, b: string[] | undefined): st
   if (!a) return b;
   if (!b) return a;
   return Array.from(new Set([...a, ...b]));
+}
+
+/** Rules that must all hold, each checked on its own -- timeRestrictions. */
+export function mergeAll<T>(a: T | T[] | undefined, b: T | T[] | undefined): T | T[] | undefined {
+  if (a === undefined) return b;
+  if (b === undefined) return a;
+  return [a, b].flat() as T[];
 }
