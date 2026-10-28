@@ -12,7 +12,8 @@ import { randomId } from "./id.js";
  *   created -> authorized          (policy allows outright)
  *   pending_approval -> authorized (approval granted)
  *   pending_approval -> rejected   (approval rejected or expired)
- *   authorized -> executing        (worker picks up job)
+ *   authorized -> executing        (worker picks up job, or the agent reports its payment)
+ *   authorized -> failed           (the authorization expired unused; AdaSouls/adasouls-api#17)
  *   executing -> confirmed         (provider confirms)
  *   executing -> failed            (provider error / timeout)
  *   confirmed -> reversed          (rare -- chargeback/refund path)
@@ -36,7 +37,7 @@ export type EconomicActionStatus = (typeof ECONOMIC_ACTION_STATUSES)[number];
 const LEGAL_TRANSITIONS: Record<EconomicActionStatus, readonly EconomicActionStatus[]> = {
   created: ["rejected", "pending_approval", "authorized"],
   pending_approval: ["authorized", "rejected"],
-  authorized: ["executing"],
+  authorized: ["executing", "failed"],
   executing: ["confirmed", "failed"],
   confirmed: ["reversed"],
   rejected: [],
