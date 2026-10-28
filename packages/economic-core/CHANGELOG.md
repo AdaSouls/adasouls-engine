@@ -1,5 +1,11 @@
 # @adasouls/economic-core
 
+## 0.2.0
+
+### Minor Changes
+
+- [#17](https://github.com/AdaSouls/adasouls-engine/pull/17) [`e170db5`](https://github.com/AdaSouls/adasouls-engine/commit/e170db5407e5663b085e26f5fa8957122512e945) Thanks [@MatiFalcone](https://github.com/MatiFalcone)! - `authorized -> failed` is a legal transition: an authorization that expires unused (AdaSouls/adasouls-api#17). Nothing was paid, and the action is terminal like any other failure.
+
 ## 0.1.3
 
 ### Patch Changes
