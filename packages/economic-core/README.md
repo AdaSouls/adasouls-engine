@@ -37,7 +37,7 @@ change; persisting both is the caller's job.
 |---|---|
 | `created` | `rejected`, `pending_approval`, `authorized` |
 | `pending_approval` | `authorized`, `rejected` |
-| `authorized` | `executing` |
+| `authorized` | `executing`, `failed` (expired unused) |
 | `executing` | `confirmed`, `failed` |
 | `confirmed` | `reversed` |
 | `rejected`, `failed`, `reversed` | — (terminal) |

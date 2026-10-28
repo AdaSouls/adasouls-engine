@@ -149,6 +149,16 @@ describe("legal transitions — every one of the nine from the state diagram", (
   });
 });
 
+describe("an authorization that expires unused", () => {
+  it("authorized -> failed: nothing was paid, and nothing can be anymore", () => {
+    const authorized = transition(freshAction(), "authorized", { actor: ACTOR }).action;
+    const { action } = transition(authorized, "failed", { actor: { type: "system", id: "adasouls-api" }, patch: { result: { error: "authorization expired" } } });
+    expect(action.status).toBe("failed");
+    expect(action.result).toEqual({ error: "authorization expired" });
+    expect(isLegalTransition("failed", "executing")).toBe(false);
+  });
+});
+
 describe("illegal transitions — exhaustive sweep over every (from, to) pair not on the diagram", () => {
   const LEGAL_PAIRS = new Set(
     ECONOMIC_ACTION_STATUSES.flatMap((from) =>
