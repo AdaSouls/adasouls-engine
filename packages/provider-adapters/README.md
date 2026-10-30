@@ -2,8 +2,11 @@
 
 `WalletProvider`/`AccountProvider`/`ChainAdapter`/... interfaces per
 ADR-006, plus a mock (fully self-contained) and a real Safe-on-Base-Sepolia
-implementation. Providers are the custody boundary: AdaSouls never holds keys; each
-organization brings its own provider connection.
+implementation. Providers are the custody boundary, and they run where
+the keys are: in the agent developer's own runtime, with the developer's
+own keys. AdaSouls never holds a key that moves money and never executes
+a real payment with these adapters (its worker uses only the mock): the
+agent pays by itself and AdaSouls verifies the payment.
 
 ## What's implemented (Phase 5)
 
@@ -58,9 +61,9 @@ including CI.
 ## Verifying against a real testnet Safe
 
 This needs a throwaway testnet wallet you control — **not** an AdaSouls
-credential, and not real money at any point. Every organization brings its
-own provider connection; this only proves the adapter's plumbing works
-against a real chain.
+credential, and not real money at any point. The keys stay with whoever
+runs the adapter; this only proves the adapter's plumbing works against
+a real chain.
 
 1. Generate a throwaway private key (anything works, e.g.
    `npx viem generatePrivateKey` or any wallet tool) — **never reuse a
